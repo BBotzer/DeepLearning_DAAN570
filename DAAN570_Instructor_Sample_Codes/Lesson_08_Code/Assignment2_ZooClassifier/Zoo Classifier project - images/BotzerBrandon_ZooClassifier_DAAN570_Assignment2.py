@@ -70,6 +70,13 @@ import matplotlib.pyplot as plt
 #%%
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
+# Is your GPU configured?
+
+print(tf.config.list_physical_devices('GPU'))
+
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
+
 #%%
 # CNN block (as VGG)
 
@@ -247,12 +254,7 @@ val_data = val_data.prefetch(tf.data.AUTOTUNE)
 
 #%%
 
-# Is your GPU configured?
 
-print(tf.config.list_physical_devices('GPU'))
-
-from tensorflow.python.client import device_lib
-print(device_lib.list_local_devices())
 
 
 #%%
@@ -261,7 +263,7 @@ print(device_lib.list_local_devices())
 
 lr = 1e-3
 optimizer = tf.keras.optimizers.experimental.AdamW(learning_rate=lr)
-loss_fn = tf.keras.losses.CategoricalCrossentropy() #does this need logits=True
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy() #Use sparce since these are integer encodings (not one-hot)  #does this need logits=True
 metrics = [tf.keras.metrics.Accuracy(),
            tf.keras.metrics.AUC()]
 
@@ -271,6 +273,9 @@ net.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 #%%
 
 #train the model
+
+# THIS NEEDS AN ARGMAX LAYER TO GIVE ME THE INDEX OF THE MAX PROB
+# FROM THE SOFTMAX FUNCTION.  HOW DO I ADD THAT?
 
 epochs = 10
 
