@@ -59,7 +59,7 @@ from sklearn.model_selection import train_test_split
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-
+from tensorflow.keras.utils import plot_model
 from tensorflow.keras.utils import image_dataset_from_directory
 
 import numpy as np
@@ -81,7 +81,7 @@ def cnn_block(num_conv, num_chan):
         
         block.add(tf.keras.layers.Conv2D(num_chan, kernel_size = 3,
                                          padding='same', activation='relu'))
-        block.add(tf.kerasl.layers.MaxPool2D(pool_size=2, strides=2))
+        block.add(tf.keras.layers.MaxPool2D(pool_size=2, strides=2))
         
     return block
     
@@ -101,6 +101,14 @@ def vgg(conv_arch):
     
     cnn = tf.keras.models.Sequential()
     
+    
+    # If I wanted to preprocess the images in the Network
+    # happens on the GPU (make sure your device GPU is configured)
+    #cnn.add(tf.keras.layers.Rescaling(1.0/255))  #rescale:
+                                                    # with sequential this 
+                                                    # should take any dim
+                                                    # 500x500x3 x batch?
+    
     for(num_conv, num_chan) in conv_arch:
         cnn.add(cnn_block(num_conv, num_chan))
         
@@ -119,6 +127,25 @@ def vgg(conv_arch):
         # 1x1 convolutions - 
     
     return cnn
+
+net = vgg(conv_arch)
+
+#%%
+
+# Can I make a plot of the model?  It is a sequential set up here
+
+#plot_model(net)
+
+
+# Test out the VGG to make sure it works...
+
+X = tf.random.uniform((1,500,500,3))
+
+for block in net.layers:
+    X = block(X)
+    print(block.__class__.__name__, 'output shape:\t', X.shape)
+    
+# This works but my own data does not... I bet it is the batching
 
 #%%
 
@@ -156,35 +183,133 @@ train_data, val_data = image_dataset_from_directory(loc,
 # Data Visualization for Cats = 0, Dogs = 1, Pandas = 2
 
 plt.figure(figsize=(10, 10))
+
+# From the train_data, take(1) image and its label
+# plot these in the 3x3 grid
 for images, labels in train_data.take(1):
     for i in range(9):
         ax = plt.subplot(3, 3, i + 1)
         plt.imshow(images[i].numpy().astype("uint8"))
         plt.title(int(labels[i]))
         plt.axis("off")
-    
-    
+           
 
 #%%
 
+# Run Data Augmentation to increase the size of the dataset
+
+data_augment = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip(mode="horizontal_and_vertical"),
+    tf.keras.layers.RandomRotation(0.1)
+    ])
+
+# Think about putting in a random zoom later - tf.keras.layers.RandomZoom(0.1)
+
+#%%
     
-    
-    
-    
-    
-    
-    
+# Plot the image data with augmentation
 
+plt.figure(figsize=(10,10))
 
-
-
-
-
-
-
+for images, labels in train_data.take(1):
+    for i in range(9):
+        augmented_images = data_augment(images)
+        ax = plt.subplot(3,3, i+1)
+        plt.imshow(augmented_images[i].numpy().astype("uint8"))
+        plt.title((int(labels[i])))
+        plt.axis("off")  
+     
 
 
 #%%
+
+# Proprocess the data asynchronously
+
+# Happens on the CPU (you know this will work)
+#aug_train_data = train_data.map(
+#    lambda x, y: (data_augment(x, training=True), y))
+
+
+#Run the data_augment function on each image with its label
+train_data = train_data.map(
+    lambda image, label: (data_augment(image), label),
+    num_parallel_calls=tf.data.AUTOTUNE)
+
+# DO NOT AUGMENT YOUR VALIDATION DATA!
+
+#%%
+
+# Prefetch samples in GPU memory for GPU utilization
+# Make sure your GPU is config'd
+
+train_data = train_data.prefetch(tf.data.AUTOTUNE)
+val_data = val_data.prefetch(tf.data.AUTOTUNE)
+
+#%%
+
+# Is your GPU configured?
+
+print(tf.config.list_physical_devices('GPU'))
+
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
+
+
+#%%
+
+# optimizers, loss, metrics
+
+lr = 1e-3
+optimizer = tf.keras.optimizers.experimental.AdamW(learning_rate=lr)
+loss_fn = tf.keras.losses.CategoricalCrossentropy() #does this need logits=True
+metrics = [tf.keras.metrics.Accuracy(),
+           tf.keras.metrics.AUC()]
+
+# compile the model
+net.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+
+#%%
+
+#train the model
+
+epochs = 10
+
+training_values = net.fit(
+    train_data,
+    epochs=epochs,
+    validation_data=val_data)
+
+
+#%%
+# What are the sizes of the batch tensors?
+
+for image_batch, labels_batch in train_data:
+  print(image_batch.shape)
+  print(labels_batch.shape)
+  break
+
+# Size is:  (150, 500, 500, 3) with labels_batch.shape = (150,)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
