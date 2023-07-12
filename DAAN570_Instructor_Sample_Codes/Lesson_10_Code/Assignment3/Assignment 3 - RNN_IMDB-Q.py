@@ -121,26 +121,86 @@ The output layer has the sigmoid activation function.
 
 # In general the order is:
     # Encoder
-    # 
-
-
-
-
-model_RNN = tf.keras.Sequential([
-    text_encoder,
+    # Embedding
+    # SimpleRNN
+    # Dense Output layer
     
+# If you put the SimpleRNN before the Embedding you'll get a Input error
+# as the shape of the tensor is wrong.
+
+
+# I think I need to put the text_encoder at the begining of this 
+# so that the text is in numeric values
+
+# HOW DO I SET-UP THE KERNEL INITIALIZATION CORRECTLY?
+
+
+
+def model_RNN():
     
-    ])
+    model = tf.keras.Sequential([
+        text_encoder,
+        layers.Embedding(input_dim=vocab_size, output_dim=50),
+        layers.SimpleRNN(5, kernel_initializer='glorot_uniform'), # setting return_sequences=True will kick back the batch size as well
+        layers.Dense(1, activation='sigmoid')
+        ])
+    
+    return model
+
+#%%
+# Create the network
+rnn_net = model_RNN()
+
+rnn_net.summary()
+
+print("By the summary, there are 100,000 parameters in the embedding layer.")
+
+#%%
+
+optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
+
+loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+mets = ['accuracy']
+
+rnn_net.compile(optimizer, loss_fn, mets)
+
+
+#%%
+history_rnn = rnn_net.fit(train_dataset, 
+                          epochs=10,
+                          validation_data=test_dataset,
+                          validation_steps=30)
+
+
+#%%
+
+test_loss, test_acc = rnn_net.evaluate(test_dataset)
+
+print('Test Loss:', test_loss)
+print('Test Accuracy:', test_acc)
 
 
 
 
+#%%
 
+# Plotting Function
+def plot_graphs(history, metric):
+  plt.plot(history.history[metric])
+  plt.plot(history.history['val_'+metric], '')
+  plt.xlabel("Epochs")
+  plt.ylabel(metric)
+  plt.legend([metric, 'val_'+metric])
 
-
-
-
-
+#%%
+plt.figure(figsize=(16, 8))
+plt.subplot(1, 2, 1)
+plot_graphs(history_rnn, 'accuracy')
+plt.ylim(None, 1)
+plt.subplot(1, 2, 2)
+plot_graphs(history_rnn, 'loss')
+plt.ylim(0, None)
 
 
 
