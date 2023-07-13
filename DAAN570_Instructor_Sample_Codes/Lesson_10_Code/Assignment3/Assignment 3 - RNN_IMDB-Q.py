@@ -485,7 +485,7 @@ def objective_hiddenlayer_rnn(trial):
 
 study = optuna.create_study(direction='maximize')
 
-study.optimize(objective_hiddenlayer_rnn, n_trials = 10, timeout = 7200, 
+study.optimize(objective_hiddenlayer_rnn, n_trials = 25, timeout = 16000, 
                gc_after_trial=True)
 
 
