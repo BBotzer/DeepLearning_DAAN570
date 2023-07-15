@@ -503,7 +503,17 @@ print("    Parameters: ")
 for key, value in best.params.items():    # go through the dictionary
     print("        {}: {}".format(key,value))
 
-    
+'''
+
+You completed 25 trials.
+Best run:
+    Accuracy Value: 0.7139999866485596
+    Parameters: 
+        n_hidden: 3
+
+'''    
+
+
 #%%
 '''
 
