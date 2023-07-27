@@ -83,6 +83,10 @@ def try_gpu(i=0):
         return tf.device(f'/GPU:{i}')
     return tf.device('/CPU:0')
 
+device = try_gpu()
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 #%%
 # CNN block (as VGG)
 
