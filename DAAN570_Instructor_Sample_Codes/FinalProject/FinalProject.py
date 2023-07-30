@@ -28,7 +28,10 @@ from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
 
+from tensorflow.keras.callbacks import TensorBoard
 
+#For Notebooks
+#%load_ext tensorboard  #may also just need to boot this from cmd line
 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -217,7 +220,9 @@ def data_build(batchsize=32, i_h=50, i_w=50, filepath=data_path):
     return train_ds, val_ds
 #%%
 # Collect the data
-train_ds, val_ds = data_build(32,50,50,data_path)
+train_ds, val_ds = data_build(32, 50, 50, data_path)
+
+train_ds_vgg, val_ds_vgg = data_build(32, 224, 224, data_path)
 
 
 #%%
@@ -246,9 +251,9 @@ valAug = ImageDataGenerator(
 # Adjust based on GPU specs
 batchsize = 32 
 
-trainGen = trainAug.flow_from_directory(
+trainGen_cnn = trainAug.flow_from_directory(
 	data_path,
-	class_mode="categorical",
+	class_mode="binary",
 	target_size=(50, 50),
 	color_mode="rgb",
 	shuffle=True,
@@ -256,14 +261,36 @@ trainGen = trainAug.flow_from_directory(
     subset='training')
 
 # initialize the validation generator
-valGen = valAug.flow_from_directory(
+valGen_cnn = valAug.flow_from_directory(
 	data_path,
-	class_mode="categorical",
+	class_mode="binary",
 	target_size=(50, 50),
 	color_mode="rgb",
 	shuffle=True,
 	batch_size=batchsize,
     subset='validation')
+
+trainGen_vgg = trainAug.flow_from_directory(
+	data_path,
+	class_mode="binary",
+	target_size=(224, 224),
+	color_mode="rgb",
+	shuffle=True,
+	batch_size=batchsize,
+    subset='training')
+
+# initialize the validation generator
+valGen_vgg = valAug.flow_from_directory(
+	data_path,
+	class_mode="binary",
+	target_size=(224, 224),
+	color_mode="rgb",
+	shuffle=True,
+	batch_size=batchsize,
+    subset='validation')
+
+
+
 
     
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -388,7 +415,7 @@ def create_custom_CNN(width, height, depth, classes):
     net.add(Activation('relu'))
     net.add(BatchNormalization())
     net.add(MaxPooling2D(pool_size=(2,2)))
-    net.add(Dropout(0.23))
+    net.add(Dropout(0.25))
         
     net.add(SeparableConv2D(64,(3,3), padding='same'))
     net.add(Activation('relu'))
@@ -479,7 +506,7 @@ vgg_plus.summary()
 
     # COMPILE MODELS
 
-# Setup the model compile items
+# Custom Metrics functions that don't exist in tensorflow 2.10.0
 
 # Via https://datascience.stackexchange.com/questions/45165/how-to-get-accuracy-f1-precision-and-recall-for-a-keras-model
 from keras import backend as K
@@ -503,6 +530,7 @@ def f1_m(y_true, y_pred):
 
 
 #%%
+# Setup the model compile items
 # Use Adam Optimizer
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
 #Binary Crossentropy for two classes (CHECK from_logits=False)  
@@ -533,12 +561,11 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='binary_accuracy', patience=5)
 
 # Use a model checkpoint to prevent lossing model due to power issues
-custcnn_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/custcnn_checkpt/models/custcnn_checkpt'
-vgg_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/custcnn_checkpt/models/./vgg_checkpt'
-vggplus_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/custcnn_checkpt/models/./vggplus_checkpt'
+custcnn_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/custcnn_checkpt'
+vgg_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vgg_checkpt'
+vggplus_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vggplus_checkpt'
 
-
-    
+# Model Checkpoint Callbacks
 cnn_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=custcnn_check_path,
     save_weights_only=False,
@@ -548,6 +575,14 @@ cnn_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     mode='max',
     save_best_only=True)
 
+cnn_aug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=custcnn_check_path,
+    save_weights_only=False,
+    save_freq=10,
+    # monitor='val_accuracy',
+    monitor='binary_accuracy',
+    mode='max',
+    save_best_only=True)
 
 vgg_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=vgg_check_path,
@@ -558,7 +593,6 @@ vgg_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     mode='max',
     save_best_only=True)
    
-
 vggplus_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=vggplus_check_path,
     save_weights_only=False,
@@ -567,6 +601,16 @@ vggplus_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     monitor='binary_accuracy',
     mode='max',
     save_best_only=True)
+
+# Tensorboard Callbacks if we want them
+
+import datetime
+
+log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      update_freq=1
+                                                      )
 
 
     
@@ -580,18 +624,234 @@ vggplus_checkpoint = tf.keras.callbacks.ModelCheckpoint(
 cust_cnn_unaug=create_custom_CNN(width=50, height=50, depth=3, classes=1)
 cust_cnn_unaug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 
+log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + 'cust_cnn_unaug_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      update_freq=1
+                                                      )
+
 history_custcnn_unaug = cust_cnn_unaug.fit(
     train_ds, 
     validation_data=val_ds, 
     epochs = 20, 
-    callbacks=[early_stop, cnn_checkpoint])
+    callbacks=[early_stop, cnn_checkpoint, tensorboard_callback])
+
+#%%
+# Plots to show results outside of TensorBoard
+epoch_list = list(range(1, len(history_custcnn_unaug.history['auc']) + 1))
+plt.plot(epoch_list, history_custcnn_unaug.history['auc'], epoch_list, history_custcnn_unaug.history['val_auc'])
+plt.legend(("Training AUC", "Validation AUC"))
+plt.show()
+
+epoch_list = list(range(1, len(history_custcnn_unaug.history['loss']) + 1))
+plt.plot(epoch_list, history_custcnn_unaug.history['loss'], epoch_list, history_custcnn_unaug.history['val_loss'])
+plt.legend(("Training Loss", "Validation Loss"))
+plt.show()
+
+    
+#%%
+
+# Train VGG_plus model using unaugmented images
+vgg_plus_unaug = tf.keras.Model(inputs=vgg.input, outputs=output) 
+vgg_plus_unaug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+
+log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + 'vgg_plus_unaug_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      update_freq=1
+                                                      )
+
+history_vgg_plus_unaug = vgg_plus_unaug.fit(
+    train_ds_vgg, 
+    validation_data=val_ds_vgg, 
+    epochs = 20, 
+    callbacks=[early_stop, vggplus_checkpoint, tensorboard_callback])
+
+#%%
+# Plots to show results outside of TensorBoard
+epoch_list = list(range(1, len(history_vgg_plus_unaug.history['auc']) + 1))
+plt.plot(epoch_list, history_vgg_plus_unaug.history['auc'], epoch_list, history_vgg_plus_unaug.history['val_auc'])
+plt.legend(("Training AUC", "Validation AUC"))
+plt.show()
+
+epoch_list = list(range(1, len(history_vgg_plus_unaug.history['loss']) + 1))
+plt.plot(epoch_list, history_vgg_plus_unaug.history['loss'], epoch_list, history_vgg_plus_unaug.history['val_loss'])
+plt.legend(("Training Loss", "Validation Loss"))
+plt.show()
+
+#%%
+# Train CustCNN model using Augmented images
+
+# Create, Compile, Fit
+cust_cnn_aug=create_custom_CNN(width=50, height=50, depth=3, classes=1)
+cust_cnn_aug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+
+log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + 'cust_cnn_aug_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      update_freq=1
+                                                      )
+
+history_custcnn_aug = cust_cnn_aug.fit(
+    trainGen_cnn, 
+    validation_data=valGen_cnn, 
+    epochs = 20, 
+    callbacks=[early_stop, cnn_aug_checkpoint, tensorboard_callback])
+
+#%%
+# Plots to show results outside of TensorBoard
+epoch_list = list(range(1, len(history_custcnn_aug.history['auc']) + 1))
+plt.plot(epoch_list, history_custcnn_aug.history['auc'], epoch_list, history_custcnn_aug.history['val_auc'])
+plt.legend(("Training AUC", "Validation AUC"))
+plt.show()
+
+epoch_list = list(range(1, len(history_custcnn_aug.history['loss']) + 1))
+plt.plot(epoch_list, history_custcnn_aug.history['loss'], epoch_list, history_custcnn_aug.history['val_loss'])
+plt.legend(("Training Loss", "Validation Loss"))
+plt.show()
+
+#%%
+
+# Train VGG_plus model using augmented images
+vgg_plus_unaug = tf.keras.Model(inputs=vgg.input, outputs=output) 
+vgg_plus_unaug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+
+log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + 'vgg_plus_aug_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      update_freq=1
+                                                      )
+
+history_vgg_plus_aug = vgg_plus_unaug.fit(
+    trainGen_vgg, 
+    validation_data=valGen_vgg, 
+    epochs = 20, 
+    callbacks=[early_stop, vggplus_checkpoint, tensorboard_callback])
+
+
+#%%
+# Plots to show results outside of TensorBoard
+epoch_list = list(range(1, len(history_vgg_plus_aug.history['auc']) + 1))
+plt.plot(epoch_list, history_vgg_plus_aug.history['auc'], epoch_list, history_vgg_plus_aug.history['val_auc'])
+plt.legend(("Training AUC", "Validation AUC"))
+plt.show()
+
+epoch_list = list(range(1, len(history_vgg_plus_aug.history['loss']) + 1))
+plt.plot(epoch_list, history_vgg_plus_aug.history['loss'], epoch_list, history_vgg_plus_aug.history['val_loss'])
+plt.legend(("Training Loss", "Validation Loss"))
+plt.show()
+
+
+
+
+
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+# MODEL EVALUATION
+from sklearn.metrics import classification_report,confusion_matrix
+
+#%%
+
+    # Make Predictions so we can see these in a classification report with cust_CNN
+
+# With the CNN UNAUGMENTED training dataset
+training_preds_cnn_unaug = cust_cnn_unaug.predict(train_ds)
+
+# I don't know if this will work since it isn't called in by flow_
+training_preds_cnn_unaug_labels = train_ds.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_cnn_unaug_labels, training_preds_cnn_unaug))
+
+# Now for the CNN UNAUGMENTED validation dataset
+val_preds_cnn_unaug = cust_cnn_unaug.predict(val_ds)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_cnn_unaug_labels = val_ds.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_cnn_unaug_labels, val_preds_cnn_unaug))
+
+#%%
+
+    # Make Predictinos for classification report with VGG_plus
+
+# With the training dataset
+training_preds_vggplus_unaug = vgg_plus_unaug.predict(train_ds_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+training_preds_vggplus_unaug_labels = train_ds_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_vggplus_unaug_labels, training_preds_vggplus_unaug))
+
+# Now for the validation set
+val_preds_vggplus_unaug = vgg_plus_unaug.predict(val_ds_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_vggplus_unaug_labels = val_ds_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_vggplus_unaug_labels, val_preds_vggplus_unaug))
+
+#%%
+
+    # Make Predictinos for classification report with just VGG
+    
+# With the training dataset
+training_preds_vgg_unaug = vgg.predict(train_ds_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+training_preds_vgg_unaug_labels = train_ds_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_vgg_unaug_labels, training_preds_vgg_unaug))
+
+# Now for the validation set
+val_preds_vgg_unaug = vgg.predict(val_ds_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_vgg_unaug_labels = val_ds_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_vgg_unaug_labels, val_preds_vgg_unaug))
+
+
     
     
-#%%  
-    
-    
-    
-    
+#%%
+
+
+
+#%%
+
+
+
+#%%
+
+
+
+#%%
+
     
     
     
