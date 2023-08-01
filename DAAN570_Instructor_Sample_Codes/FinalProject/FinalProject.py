@@ -561,13 +561,14 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='binary_accuracy', patience=5)
 
 # Use a model checkpoint to prevent lossing model due to power issues
-custcnn_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/custcnn_checkpt'
-vgg_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vgg_checkpt'
-vggplus_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vggplus_checkpt'
+custcnn_unaug_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/custcnn_unaug_checkpt'
+custcnn_aug_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/custcnn_aug_checkpt'
+vggplus_unaug_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vggplus_unaug_checkpt'
+vggplus_aug_check_path = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/models/vggplus_aug_checkpt'
 
 # Model Checkpoint Callbacks
-cnn_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=custcnn_check_path,
+cnn_unaug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=custcnn_unaug_check_path,
     save_weights_only=False,
     save_freq=10,
     # monitor='val_accuracy',
@@ -576,7 +577,7 @@ cnn_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True)
 
 cnn_aug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=custcnn_check_path,
+    filepath=custcnn_aug_check_path,
     save_weights_only=False,
     save_freq=10,
     # monitor='val_accuracy',
@@ -584,8 +585,8 @@ cnn_aug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     mode='max',
     save_best_only=True)
 
-vgg_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=vgg_check_path,
+vggplus_unaug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=vggplus_unaug_check_path,
     save_weights_only=False,
     save_freq=10,
     # monitor='val_accuracy',
@@ -593,8 +594,8 @@ vgg_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     mode='max',
     save_best_only=True)
    
-vggplus_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=vggplus_check_path,
+vggplus_aug_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=vggplus_aug_check_path,
     save_weights_only=False,
     save_freq=10,
     # monitor='val_accuracy',
@@ -633,8 +634,8 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
 history_custcnn_unaug = cust_cnn_unaug.fit(
     train_ds, 
     validation_data=val_ds, 
-    epochs = 20, 
-    callbacks=[early_stop, cnn_checkpoint, tensorboard_callback])
+    epochs = 50, 
+    callbacks=[early_stop, cnn_unaug_checkpoint, tensorboard_callback])
 
 #%%
 # Plots to show results outside of TensorBoard
@@ -664,8 +665,8 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
 history_vgg_plus_unaug = vgg_plus_unaug.fit(
     train_ds_vgg, 
     validation_data=val_ds_vgg, 
-    epochs = 20, 
-    callbacks=[early_stop, vggplus_checkpoint, tensorboard_callback])
+    epochs = 50, 
+    callbacks=[early_stop, vggplus_unaug_checkpoint, tensorboard_callback])
 
 #%%
 # Plots to show results outside of TensorBoard
@@ -695,7 +696,7 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
 history_custcnn_aug = cust_cnn_aug.fit(
     trainGen_cnn, 
     validation_data=valGen_cnn, 
-    epochs = 20, 
+    epochs = 50, 
     callbacks=[early_stop, cnn_aug_checkpoint, tensorboard_callback])
 
 #%%
@@ -713,8 +714,8 @@ plt.show()
 #%%
 
 # Train VGG_plus model using augmented images
-vgg_plus_unaug = tf.keras.Model(inputs=vgg.input, outputs=output) 
-vgg_plus_unaug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+vgg_plus_aug = tf.keras.Model(inputs=vgg.input, outputs=output) 
+vgg_plus_aug.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 
 log_dir = 'C:/Users/btb51/Documents/GitHub/DeepLearning_DAAN570/DAAN570_Instructor_Sample_Codes/FinalProject/logs/' + 'vgg_plus_aug_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -722,11 +723,11 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                       update_freq=1
                                                       )
 
-history_vgg_plus_aug = vgg_plus_unaug.fit(
+history_vgg_plus_aug = vgg_plus_aug.fit(
     trainGen_vgg, 
     validation_data=valGen_vgg, 
-    epochs = 20, 
-    callbacks=[early_stop, vggplus_checkpoint, tensorboard_callback])
+    epochs = 50, 
+    callbacks=[early_stop, vggplus_aug_checkpoint, tensorboard_callback])
 
 
 #%%
@@ -807,9 +808,71 @@ val_preds_vggplus_unaug_labels = val_ds_vgg.classes
 
 print(classification_report(val_preds_vggplus_unaug_labels, val_preds_vggplus_unaug))
 
+
+
+
+
+#%%
+# With the CNN AUGMENTED training dataset
+training_preds_cnn_aug = cust_cnn_aug.predict(trainGen_cnn)
+
+# I don't know if this will work since it isn't called in by flow_
+training_preds_cnn_aug_labels = trainGen_cnn.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_cnn_aug_labels, training_preds_cnn_aug))
+
+# Now for the CNN UNAUGMENTED validation dataset
+val_preds_cnn_aug = cust_cnn_aug.predict(valGen_cnn)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_cnn_aug_labels = valGen_cnn.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_cnn_aug_labels, val_preds_cnn_aug))
+
+
+
+
+#%%
+    # Make Predictinos for classification report with VGG_plus
+
+# With the training dataset
+training_preds_vggplus_aug = vgg_plus_aug.predict(trainGen_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+training_preds_vggplus_aug_labels = trainGen_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_vggplus_aug_labels, training_preds_vggplus_aug))
+
+# Now for the validation set
+val_preds_vggplus_aug = vgg_plus_aug.predict(valGen_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_vggplus_aug_labels = valGen_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_vggplus_aug_labels, val_preds_vggplus_aug))
+
+
+
+
 #%%
 
-    # Make Predictinos for classification report with just VGG
+    # Make Predictinos for classification report with just VGG UNAGUMENTED
     
 # With the training dataset
 training_preds_vgg_unaug = vgg.predict(train_ds_vgg)
@@ -840,7 +903,31 @@ print(classification_report(val_preds_vgg_unaug_labels, val_preds_vgg_unaug))
     
 #%%
 
+    # Make Predictinos for classification report with just VGG AUGMENTED
+    
+# With the training dataset
+training_preds_vgg_unaug = vgg.predict(trainGen_vgg)
 
+# I don't know if this will work since it isn't called in by flow_
+training_preds_vgg_unaug_labels = trainGen_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(training_preds_vgg_unaug_labels, training_preds_vgg_unaug))
+
+# Now for the validation set
+val_preds_vgg_unaug = vgg.predict(valGen_vgg)
+
+# I don't know if this will work since it isn't called in by flow_
+val_preds_vgg_unaug_labels = valGen_vgg.classes 
+
+# Check if these have been one-hot encoded... I don't think they have been but best to check
+# If they have been, undo the one-hot with:
+# train_predictions_rounded_labels=np.argmax(train_predictions, axis=1)
+
+print(classification_report(val_preds_vgg_unaug_labels, val_preds_vgg_unaug))
 
 #%%
 
